@@ -57,7 +57,7 @@ exports.login = (req, res) => {
                 return res.status(400).json({message: "User doesn't exist"})
             }
 
-            const isMatch = await bcrypt.compare(password, user.password)
+            const isMatch = await bcrypt.compare(req.body.password, user.password)
 
             if (!isMatch){
                 return res.status(400).json({message: "Incorrect password, try again"})
@@ -79,7 +79,10 @@ exports.login = (req, res) => {
                 overwrite: true,
                 sameSite: "none",
                 secure: false
-            }).status(200).json({message: "You are logged in successfully!"})
+            })
+
+            const {password, ...data} = await user.toJSON()
+            res.status(200).json(data)
         })
 
 

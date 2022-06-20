@@ -5,6 +5,7 @@ const User = require("../models/user.model.js")
 const jwt = require('jsonwebtoken')
 const mongoose = require("mongoose")
 const e = require("express");
+const {mongo} = require("mongoose");
 
 exports.getAllPosts = (req, res) => {
     Post.find().then((data) => {
@@ -118,10 +119,82 @@ exports.deletePost = (req, res) => {
                         });
                     });
             }else{
-                return res.json({message: "You are not allowed to delete this post!"})
+                return res.status(405).json({message: "You are not allowed to delete this post!"})
             }
 
         }).catch((err) => {
+            return res.status(500).json({message: "Error while deleting this post!"})
+    })
+}
+exports.updatePost = (req, res) => {
+    const token = req.cookies.token;
+    const user = jwt.verify(token, process.env.ACCESS_TOKEN)
+
+    Post.findById(req.params.postId)
+        .then((data) => {
+            if (!data){
+                return res.status(404).json({
+                    message: "Post not found with id: " + req.params.postId
+                })
+            }
+
+
+            if (data.userId.toString() === user.id){
+                Post.findByIdAndUpdate(req.params.postId,
+                    {
+                        title: req.body.title,
+                        description: req.body.description,
+                        updated_at: Date.now()
+                    })
+                    .then((data) => {
+                        if (!data){
+                            return res.status(404).json({message: "Post not found with id: " + req.params.postId})
+                        }
+
+                        res.status(200).json({message: "Post updated successfully!"})
+
+
+                    }).catch((err) => {
+                        if (err.kind === "ObjectId"){
+                            return res.status(404).send({
+                                message: "Post not found with id " + req.params.postId,
+                            });
+                        }
+                        return res.status(500).send({
+                            message: "Error retrieving message with id: " + req.params.postId
+                        });
+
+                })
+            } else {
+                return res.status(405).json({message: "You are not allowed to modify this post!"})
+            }
+        }).catch((err) => {
+            if (err.kind === "ObjectId"){
+                return res.status(404).send({
+                    message: "Post not found with id " + req.params.postId,
+                });
+            }
+            return res.status(500).send({
+                message: "Error retrieving message with id: " + req.params.postId
+            });
+    })
+}
+
+exports.getUsersPosts = (req, res) => {
+
+    Post.find({userId: req.params.userId})
+        .then((data) => {
+            if (!data){
+                return res.status(404).json({message: "Post not found with id: " + req.params.userId})
+            }
+            res.status(200).json(data)
+
+        }).catch((err) => {
+            if (err.kind === "ObjectId"){
+                return res.status(404).json({message: "Post not found with id: " + req.params.userId})
+            }
+
             return res.status(500).json({message: err.message})
     })
+
 }
